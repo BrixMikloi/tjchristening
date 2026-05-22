@@ -7,7 +7,7 @@
       name="description"
       content="Baby Christening invitation website for Tyler Jheo on June 28, 2026."
     />
-    <title>Tyler Jheo | Baby Christening Invitation</title>
+    <title>TJ | Christening Invitation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -219,17 +219,7 @@
 
           <form class="rsvp-form reveal" novalidate>
             <div class="form-row form-row-full">
-              <label for="guest-attendance">Attendance Confirmation</label>
-              <select id="guest-attendance" name="attendance" required>
-                <option value="">Please select one</option>
-                <option value="Attending">Yes, I will attend</option>
-                <option value="Not attending">Sorry, I can't attend</option>
-              </select>
-              <p class="field-error" data-error-for="attendance"></p>
-            </div>
-
-            <div class="form-row">
-              <label for="guest-name">Name</label>
+              <label for="guest-name">Full Name</label>
               <input id="guest-name" name="name" type="text" autocomplete="name" required />
               <p class="field-error" data-error-for="name"></p>
             </div>
@@ -253,8 +243,22 @@
             </div>
 
             <div class="form-row">
-              <label for="guest-count">Number of Persons Attending</label>
-              <input id="guest-count" name="count" type="number" min="1" max="10" required />
+              <label for="guest-attendance">Attendance Confirmation</label>
+              <select id="guest-attendance" name="attendance" required>
+                <option value="">Please select one</option>
+                <option value="Attending">Yes, I will attend</option>
+                <option value="Not attending">Sorry, I can't attend</option>
+              </select>
+              <p class="field-error" data-error-for="attendance"></p>
+            </div>
+
+            <div class="form-row">
+              <label for="guest-count">Number of Guests</label>
+              <select id="guest-count" name="count" required>
+                <option value="">Please select one</option>
+                <option value="1">1 person</option>
+                <option value="2">2 persons</option>
+              </select>
               <p class="field-error" data-error-for="count"></p>
             </div>
 
@@ -273,6 +277,16 @@
     <footer class="site-footer">
       <p>Thank you for celebrating this blessed day with Tyler Jheo.</p>
     </footer>
+
+    <div class="success-modal" data-success-modal hidden role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
+      <div class="success-modal-panel" role="document">
+        <button class="success-modal-close" type="button" data-success-modal-close aria-label="Close success message">&times;</button>
+        <p class="eyebrow">RSVP Submitted Successfully</p>
+        <h2 id="success-modal-title">We look forward to celebrating with you.</h2>
+        <p>Your RSVP has been received. Add Tyler Jheo's christening to your calendar so the date, time, venue, and reminders are saved on your device.</p>
+        <button class="btn btn-primary" type="button" data-add-calendar>Add to Calendar</button>
+      </div>
+    </div>
 
     <div class="lightbox" data-lightbox aria-hidden="true" role="dialog" aria-label="Gallery image viewer">
       <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close gallery" ><img src="src/icons/close-btn.svg" alt="Close" style="width: 20px;"></button>

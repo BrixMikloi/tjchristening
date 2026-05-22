@@ -13,14 +13,26 @@
     next: "[data-lightbox-next]",
     form: ".rsvp-form",
     success: ".form-success",
+    successModal: "[data-success-modal]",
+    successModalClose: "[data-success-modal-close]",
+    addCalendar: "[data-add-calendar]",
   };
 
   const EVENT_DATE = new Date("2026-06-28T11:30:00+08:00");
+  const EVENT_TIMEZONE = "Asia/Manila";
+  const EVENT_START_ICS = "20260628T113000";
+  const EVENT_END_ICS = "20260628T183000";
+  const EVENT_TITLE = "Tyler Jheo Christening";
+  const EVENT_LOCATION =
+    "Our Lady of Lourdes Parish Kabasalan; Reception at Mon's Sutukil";
+  const EVENT_DESCRIPTION =
+    "Church ceremony at 11:30 AM, followed by the reception at Mon's Sutukil at 4:30 PM.";
   const GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxSK5p_YXKFTD0FUdMYQCoBC5VlOIiL66EfArP3a-ODnQSCMO2ZcY1MQOy_c5JwiIU3/exec";
   const state = {
     galleryImages: [],
     activeImage: 0,
     lastFocusedElement: null,
+    calendarFileUrl: "",
   };
 
   const getElements = () => ({
@@ -30,6 +42,7 @@
     lightbox: document.querySelector(SELECTORS.lightbox),
     lightboxImage: document.querySelector(SELECTORS.lightboxImage),
     form: document.querySelector(SELECTORS.form),
+    successModal: document.querySelector(SELECTORS.successModal),
   });
 
   const pad = (value) => String(value).padStart(2, "0");
@@ -171,7 +184,7 @@
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? "" : "Please enter a valid email.",
     count: (value) => {
       const count = Number(value);
-      return count >= 1 && count <= 10 ? "" : "Please enter a number from 1 to 10.";
+      return count >= 1 && count <= 2 ? "" : "Please select 1 or 2 persons only.";
     },
   };
 
@@ -231,7 +244,115 @@
     });
   };
 
-  const initForm = (form) => {
+  const formatIcsDate = (date) =>
+    date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+  const escapeIcsText = (value) =>
+    value.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
+
+  const buildIcsText = () => {
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "PRODID:-//Tyler Jheo Christening//RSVP//EN",
+      "X-WR-CALNAME:Tyler Jheo Christening",
+      "BEGIN:VTIMEZONE",
+      `TZID:${EVENT_TIMEZONE}`,
+      "BEGIN:STANDARD",
+      "DTSTART:19700101T000000",
+      "TZOFFSETFROM:+0800",
+      "TZOFFSETTO:+0800",
+      "TZNAME:PHT",
+      "END:STANDARD",
+      "END:VTIMEZONE",
+      "BEGIN:VEVENT",
+      `UID:tyler-jheo-christening-${EVENT_DATE.getTime()}@rsvp`,
+      `DTSTAMP:${formatIcsDate(new Date())}`,
+      `DTSTART;TZID=${EVENT_TIMEZONE}:${EVENT_START_ICS}`,
+      `DTEND;TZID=${EVENT_TIMEZONE}:${EVENT_END_ICS}`,
+      `SUMMARY:${escapeIcsText(EVENT_TITLE)}`,
+      `LOCATION:${escapeIcsText(EVENT_LOCATION)}`,
+      `DESCRIPTION:${escapeIcsText(EVENT_DESCRIPTION)}`,
+      "BEGIN:VALARM",
+      "TRIGGER:-P1D",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeIcsText(EVENT_TITLE)}`,
+      "END:VALARM",
+      "BEGIN:VALARM",
+      "TRIGGER:-PT2H",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeIcsText(EVENT_TITLE)}`,
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ];
+
+    return lines.join("\r\n");
+  };
+
+  const buildIcsFile = () => {
+    const calendar = buildIcsText();
+    return `data:text/calendar;charset=utf-8,${encodeURIComponent(calendar)}`;
+  };
+
+  const openCalendarFile = () => {
+    const calendar = buildIcsText();
+
+    if (window.URL && window.Blob) {
+      if (state.calendarFileUrl) {
+        window.URL.revokeObjectURL(state.calendarFileUrl);
+      }
+
+      const blob = new Blob([calendar], { type: "text/calendar;charset=utf-8" });
+      state.calendarFileUrl = window.URL.createObjectURL(blob);
+      window.location.assign(state.calendarFileUrl);
+
+      window.setTimeout(() => {
+        if (!state.calendarFileUrl) return;
+        window.URL.revokeObjectURL(state.calendarFileUrl);
+        state.calendarFileUrl = "";
+      }, 60000);
+      return;
+    }
+
+    window.location.assign(buildIcsFile());
+  };
+
+  const openSuccessModal = (modal) => {
+    if (!modal) return;
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+    modal.querySelector(SELECTORS.addCalendar).focus();
+  };
+
+  const closeSuccessModal = (modal) => {
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.classList.remove("modal-open");
+  };
+
+  const initSuccessModal = (modal) => {
+    if (!modal) return;
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.closest(SELECTORS.successModalClose)) {
+        closeSuccessModal(modal);
+      }
+
+      if (event.target.closest(SELECTORS.addCalendar)) {
+        openCalendarFile();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (modal.hidden || event.key !== "Escape") return;
+      closeSuccessModal(modal);
+    });
+  };
+
+  const initForm = (form, successModal) => {
     if (!form) return;
 
     const successMessage = form.querySelector(SELECTORS.success);
@@ -257,9 +378,14 @@
       submitButton.textContent = "Sending...";
 
       try {
+        const isAttending = form.elements.attendance.value === "Attending";
         await submitToGoogleSheets(form);
         form.reset();
-        setFormStatus("Thank you. Your RSVP has been received.", successMessage);
+        if (isAttending) {
+          openSuccessModal(successModal);
+        } else {
+          setFormStatus("Thank you. Your RSVP has been received.", successMessage);
+        }
       } catch (error) {
         setFormStatus(
           "Sorry, your RSVP could not be sent yet. Please try again later.",
@@ -295,7 +421,8 @@
     initCountdown(elements.countdown);
     initRevealAnimations(elements.revealItems);
     initGallery(elements);
-    initForm(elements.form);
+    initSuccessModal(elements.successModal);
+    initForm(elements.form, elements.successModal);
     initParallax();
   };
 
